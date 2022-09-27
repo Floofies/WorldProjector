@@ -1,0 +1,41 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, compile the TypeScript code, run tests, and then deploy to the development server.
+
+name: Node.js Development CI
+
+on:
+  push:
+    branches: [ "dev" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test via Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run build
+    - run: npm test
+
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+    - name: SSH and deploy to development server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          cd ~/WorldProjector
+          git pull origin dev
+          npm install --production
+          pm2 restart WorldProjector
